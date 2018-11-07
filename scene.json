@@ -1,0 +1,147 @@
+{
+  "scene": {
+    "sceneId": 1,
+    "sceneName": "abc",
+    "scenePath": "scene.json",
+    "objects": [
+      {
+        "t": {
+          "p": {
+            "x": -3845,
+            "y": 2275,
+            "z": 0
+          },
+          "r": {
+            "_x": 1.5707963267948966,
+            "_y": 0,
+            "_z": 0,
+            "_order": "XYZ"
+          },
+          "s": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "loader": "OBJLoader",
+        "path1": "models/washingmachine/washingmachine.obj",
+        "path2": "models/washingmachine/washingmachine.mtl"
+      },
+      {
+        "t": {
+          "p": {
+            "x": 0,
+            "y": 2200,
+            "z": 0
+          },
+          "r": {
+            "_x": 1.5707963267948966,
+            "_y": 3.1459078707147894,
+            "_z": 0,
+            "_order": "XYZ"
+          },
+          "s": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "loader": "OBJLoader",
+        "path1": "models/cabinet/cabinet.obj",
+        "path2": "models/cabinet/cabinet.mtl"
+      },
+      {
+        "t": {
+          "p": {
+            "x": 9.676878789410466,
+            "y": 2479.8187198638916,
+            "z": 377.12103321383984
+          },
+          "r": {
+            "_x": 1.5707963267948966,
+            "_y": 0,
+            "_z": 0,
+            "_order": "XYZ"
+          },
+          "s": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "loader": "OBJLoader",
+        "path1": "models/television/television.obj",
+        "path2": "models/television/television.mtl"
+      },
+      {
+        "t": {
+          "p": {
+            "x": -3240.7136968230516,
+            "y": 2407.4394161673586,
+            "z": 2116.459778046214
+          },
+          "r": {
+            "_x": 1.5707963267948966,
+            "_y": 3.1788668380067127,
+            "_z": 0,
+            "_order": "XYZ"
+          },
+          "s": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "loader": "OBJLoader",
+        "path1": "models/airconditioner/airconditioner.obj",
+        "path2": "models/airconditioner/airconditioner.mtl"
+      },
+      {
+        "t": {
+          "p": {
+            "x": 3142.5321585412607,
+            "y": 1744.6858058724692,
+            "z": 0
+          },
+          "r": {
+            "_x": 1.5707963267948966,
+            "_y": 0,
+            "_z": 0,
+            "_order": "XYZ"
+          },
+          "s": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "loader": "OBJLoader",
+        "path1": "models/airconditioner/airconditioner2.obj",
+        "path2": "models/airconditioner/airconditioner2.mtl"
+      },
+      {
+        "t": {
+          "p": {
+            "x": 0,
+            "y": -99.08169204639034,
+            "z": 0
+          },
+          "r": {
+            "_x": 1.5707963267948966,
+            "_y": 0,
+            "_z": 0,
+            "_order": "XYZ"
+          },
+          "s": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "loader": "OBJLoader",
+        "path1": "models/table_sofa.obj",
+        "path2": "models/table_sofa.mtl"
+      }
+    ]
+  }
+}

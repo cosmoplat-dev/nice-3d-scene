@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js demo</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #000;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				background-color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}
+			a {
+				color: #0af;
+			}
+			#panel {
+				position: absolute;
+				top: 0px; 
+				bottom: 0px;
+				right: 0px;
+				width: 200px;
+				padding: 5px;
+				background: white;
+				display: none;
+			}
+			#scene-panel {
+				position: absolute;
+				top: 0px; 
+				right: 0px;
+				width: 100px;
+				padding: 20px;
+				background: white;
+				display: block;
+			}
+			.input-wrap {
+				clear: both;
+			}
+
+			.object-menu-warp {
+				position: fixed;
+				left: 0;
+				top: 0;
+				background: #323232;
+				border-radius: 20px 20px 20px 2px;
+				color: #fff;
+				display: none;
+			}
+			.object-menu .menu-item {
+				display: inline-block;
+				width: 34px;
+				height: 34px;
+				padding: 4px;
+				line-height: 34px;
+				position: relative;
+				cursor: pointer;
+				color: #fff;
+
+			}
+
+			.icon {
+			    display: inline-block;
+			    cursor: pointer;
+				color: #fff;
+			}
+
+			#container {
+				margin-left: 200px; 
+			}
+
+			#left-panel {
+				position: absolute;
+				top: 0px; 
+				bottom: 0px;
+				left: 0px;
+				width: 200px;
+				padding: 5px;
+				background: white;
+				display: block;
+			}
+			.left-panel .category_item {
+			}
+
+		</style>
+	</head>
+
+	<body>
+		<div id="left-panel">
+			<div class="category_list">
+				<div class="category_item"><img src="images/washingmachine.png" width="100" height="100" /></div>
+			</div>
+		</div>
+		<div id="container"></div>
+		<div class="object-menu-warp">
+			<div class="object-menu">
+				<div id="objDelete" class="menu-item delete">
+					删除
+				</div>
+			</div>
+		</div>
+		<div id="scene-panel">
+			<input id="cleanScene" type="button" name="清空场景" value="清空场景"><br/><br/>
+			<input id="saveScene" type="button" name="保存场景" value="保存场景"><br/><br/>
+			<input id="importScene" type="button" name="导入场景" value="导入场景"><br/><br/>
+		</div>
+
+		
+
+		<div id="panel">
+			<div class="input-wrap">
+				长：<input id="obj_x" type="text" name="x"/> mm<br/>
+				宽：<input id="obj_y" type="text" name="y"/> mm<br/>
+				高：<input id="obj_z" type="text" name="z"/> mm<br/><br/>
+
+				<input id="applyBtn" type="button" name="应用" value="应用"><br/><br/>
+			</div>
+		</div>
+
+		<script src="jquery/jquery-3.3.1.min.js"></script>
+		<script src="js/three.js"></script>
+
+		<script src="js/OrbitControls.js"></script>
+		<script src="js/NiceControls.js"></script>
+		<script src="js/loaders/MTLLoader.js"></script>
+		<script src="js/loaders/OBJLoader.js"></script>
+		<script src="js/loaders/DDSLoader.js"></script>
+		<script src="js/exporters/OBJExporter.js"></script>
+
+		<script src="js/Detector.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+		<script src="js/objects/Reflector.js"></script>
+
+		<script>
+			var scene, camera, controls, stats;
+			var renderer, mixer;
+			var clock = new THREE.Clock();
+			var url = 'base_scene.json';
+			var SCENE_WIDTH;
+			var SCENE_HEIGHT;
+			var container = document.getElementById( 'container' );
+			var transformControls;
+			var orbitControls;
+			var worker;
+			var sceneObjectIds = [];
+
+			var box = new THREE.Box3();
+
+			var _draggingObject = null;
+			var _dragging = false;
+
+			var _enableRaycaster = true;
+
+
+			$(function() {
+				SCENE_WIDTH = container.clientWidth;
+				SCENE_HEIGHT = window.innerHeight;
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( SCENE_WIDTH, SCENE_HEIGHT );
+				container.appendChild( renderer.domElement );
+
+				//文件导入
+				var form = document.createElement( 'form' );
+				form.style.display = 'none';
+				document.body.appendChild( form );
+
+				var fileInput = document.createElement( 'input' );
+				fileInput.type = 'file';
+				fileInput.addEventListener( 'change', function ( event ) {
+					var file = fileInput.files[ 0 ];
+
+					var filename = file.name;
+					var extension = filename.split( '.' ).pop().toLowerCase();
+
+					var reader = new FileReader();
+					reader.addEventListener( 'progress', function ( event ) {
+
+						var size = '(' + Math.floor( event.total / 1000 ) + ' KB)';
+						var progress = Math.floor( ( event.loaded / event.total ) * 100 ) + '%';
+						console.log( 'Loading', filename, size, progress );
+
+					} );
+
+					reader.addEventListener( 'load', function ( event ) {
+						var contents = event.target.result;
+
+						var data;
+
+						try {
+
+							data = JSON.parse( contents );
+
+						} catch ( error ) {
+
+							alert( error );
+							return;
+
+						}
+
+						parseScene( data);
+
+					}, false );
+					reader.readAsText( file );
+
+					form.reset();
+
+				} );
+				form.appendChild( fileInput );
+
+
+
+				raycaster = new THREE.Raycaster();//光线投射器
+				mouse = new THREE.Vector2();//二维向量 
+				container.addEventListener('mousemove', function(){
+				    event.preventDefault();
+				    mouse.x = ((event.clientX - $(container).offset().left) / SCENE_WIDTH) * 2 - 1;
+				    mouse.y = -((event.clientY - $(container).offset().top) / SCENE_HEIGHT) * 2 + 1;
+
+				    if(_draggingObject) {
+				    	var object = _draggingObject;
+				    	scene.add(object);
+				    	sceneObjectIds.push(object.uuid);
+				    	_dragging = false;
+				    	_draggingObject = null;
+
+				    	box.setFromObject(object);
+						object.rotation.x = Math.PI / 2;
+						object.up.set(0, 0, 1);
+						object.traverse(function ( child ) {
+							child.userData.selectUUID = object.uuid;
+							if(child.type == "Mesh") {
+								child.geometry.translate(-(box.min.x + box.max.x)/2, -box.min.y, -(box.min.z + box.max.z)/2);
+							}
+						});
+
+						transformControls.setAddObject(object);
+				    }
+				}, false);
+
+				function loadBaseScene(url, complete){
+					new THREE.ObjectLoader().load( url, function(loadedScene){
+						complete(loadedScene);
+					});
+				}
+
+				// Load a scene with objects, lights and camera from a JSON file
+				loadBaseScene(url, function ( loadedScene ) {
+					scene = loadedScene;
+					scene.background = new THREE.Color( 0xffffff );
+					sceneObjectIds = [];
+
+					if ( camera === undefined ) {
+						camera = new THREE.PerspectiveCamera( 60, SCENE_WIDTH / SCENE_HEIGHT, 100, 1000000 );
+						camera.position.set( 0, -8500, 4000 );
+						camera.up.set(0, 0, 1);
+					}
+					camera.lookAt(new THREE.Vector3(0,0,0));
+
+					$.getJSON("scene.json", function(data){
+						parseScene(data);
+					});
+
+					// loadOBJ("models/washingmachine/washingmachine.mtl", 
+					// 	"models/washingmachine/washingmachine.obj", 
+					// 	{p: {x: 1000, y: 300}});
+
+					// loadOBJ("models/table_sofa.mtl", 
+					// 	"models/table_sofa.obj");
+					// loadOBJ("models/cabinet/cabinet.mtl", 
+					// 	"models/cabinet/cabinet.obj", 
+					// 	{p: {x: 0, y:2200}});
+					// loadOBJ("models/television/television.mtl", 
+					// 	"models/television/television.obj", 
+					// 	{p: {x: 800, y:2200, z:1000}});
+
+					// loadOBJ("models/airconditioner/airconditioner.mtl", 
+					// 	"models/airconditioner/airconditioner.obj", 
+					// 	{p: {x: 1000, y: -200}});
+					// loadOBJ("models/airconditioner/airconditioner2.mtl", 
+					// 	"models/airconditioner/airconditioner2.obj", 
+					// 	{p: {x: 2000, y: -800}});
+					
+					
+					addMirror(scene);
+
+					//场景控制
+					orbitControls = new THREE.OrbitControls( camera, container);
+					orbitControls.enableDamping = true;
+					orbitControls.dampingFactor = 0.8;
+					orbitControls.screenSpacePanning = false;
+					orbitControls.minDistance = 1000;
+					orbitControls.maxDistance = 50000;
+
+					orbitControls.addEventListener('change', function (event) {
+						updateWall();
+						requestAnimationFrame( render );
+				    });
+
+				    orbitControls.addEventListener('start', function (event) {
+						$('.object-menu-warp').hide();
+				    });
+
+				    orbitControls.addEventListener('rotate', function (event) {
+						_enableRaycaster = false;
+				    });
+
+					orbitControls.addEventListener('end', function (event) {
+						updateObjectInfo();
+				    });
+
+					render();
+					updateWall();
+					initTransformControls(camera, renderer, scene);
+				} );
+
+				function updateWall() {
+					var frontWall = scene.getObjectByName("front-wall");
+					box.setFromObject(frontWall);
+					if(box.min.y >= camera.position.y) {
+						frontWall.visible = false;
+					} else {
+						frontWall.visible = true;
+					}
+
+					var backWall = scene.getObjectByName("back-wall");
+					box.setFromObject(backWall);
+					if(box.max.y <= camera.position.y) {
+						backWall.visible = false;
+					} else {
+						backWall.visible = true;
+					}
+
+					var leftWall = scene.getObjectByName("left-wall");
+					box.setFromObject(leftWall);
+					if(box.min.x >= camera.position.x) {
+						leftWall.visible = false;
+					} else {
+						leftWall.visible = true;
+					}
+
+					var rightWall = scene.getObjectByName("right-wall");
+					box.setFromObject(rightWall);
+					if(box.max.x <= camera.position.x) {
+						rightWall.visible = false;
+					} else {
+						rightWall.visible = true;
+					}
+				}
+
+				function addMirror(scene){
+					var geometry = new THREE.PlaneBufferGeometry( 1000, 1000 );
+					geometry.computeBoundingBox();
+					geometry.translate(0, 500, 0);
+
+					var verticalMirror = new THREE.Reflector( geometry, {
+						clipBias: 0.003,
+						textureWidth: SCENE_WIDTH * window.devicePixelRatio,
+						textureHeight: SCENE_HEIGHT * window.devicePixelRatio,
+						color: 0x889999,
+						recursion: 1
+					} );
+					// verticalMirror.userData.selectUUID = verticalMirror.uuid;
+					verticalMirror.position.y = 2500;
+					verticalMirror.position.x = -2000;
+					verticalMirror.position.z = 600;
+					verticalMirror.rotation.x = Math.PI / 2;
+
+					scene.add( verticalMirror );
+				}
+
+				function loadOBJ(mtlPath, objPath, transfrom, complete) {
+					var onProgress = function ( xhr ) {
+						if ( xhr.lengthComputable ) {
+							var percentComplete = xhr.loaded / xhr.total * 100;
+							console.log( Math.round( percentComplete, 2 ) + '% downloaded' );
+						}
+					};
+					var pathArray = mtlPath.split('/');
+					var mtlName = pathArray[pathArray.length - 1];
+					pathArray = mtlPath.split('/' + mtlName);
+					var mtlResourcePath = pathArray[0] + "/";
+
+					pathArray = objPath.split('/');
+					var objName = pathArray[pathArray.length - 1];
+					pathArray = objPath.split('/' + objName);
+					var objResourcePath = pathArray[0] + "/";
+
+					var onError = function ( xhr ) { };
+					THREE.Loader.Handlers.add( /\.dds$/i, new THREE.DDSLoader() );
+					new THREE.MTLLoader()
+						.setPath( mtlResourcePath )
+						.load( mtlName, function ( materials ) {
+							materials.preload();
+							new THREE.OBJLoader()
+								.setMaterials( materials )
+								.setPath( objResourcePath )
+								.load( objName, function ( object ) {
+									object.loader = "OBJLoader";
+									object.path1 = objPath;
+									object.path2 = mtlPath;
+									box.setFromObject(object);
+									if(complete != undefined) {
+										complete(object)
+									} else {
+										scene.add( object );
+										sceneObjectIds.push(object.uuid);
+
+										object.rotation.x = Math.PI / 2;
+										object.up.set(0, 0, 1);
+										object.traverse(function ( child ) {
+											child.userData.selectUUID = object.uuid;
+											if(child.type == "Mesh") {
+												child.geometry.translate(-(box.min.x + box.max.x)/2, -box.min.y, -(box.min.z + box.max.z)/2);
+											}
+										});
+
+										if(transfrom && transfrom != undefined) {
+											var position = transfrom.p;
+											if(position !== undefined) {
+												if(position.x != undefined) {
+													object.position.x = position.x;
+												}
+												if(position.y != undefined) {
+													object.position.y = position.y;
+												}
+												if(position.z != undefined) {
+													object.position.z = position.z;
+												}
+											}
+
+											var rotation = transfrom.r;
+											if(rotation !== undefined) {
+												if(rotation._x != undefined) {
+													object.rotation.x = rotation._x;
+												}
+												if(rotation._y != undefined) {
+													object.rotation.y = rotation._y;
+												}
+												if(rotation._z != undefined) {
+													object.rotation.z = rotation._z;
+												}
+											}
+											var scale = transfrom.s;
+											if(scale !== undefined) {
+												if(scale.x != undefined) {
+													object.scale.x = scale.x;
+												}
+												if(rotation._y != undefined) {
+													object.scale.y = scale.y;
+												}
+												if(rotation._z != undefined) {
+													object.scale.z = scale.z;
+												}
+											}
+										}
+										
+										requestAnimationFrame(render);
+									}
+									
+
+								}, onProgress, onError );
+						} );
+				}
+
+				function render() {
+					// if(stats){
+					// 	stats.begin();
+					// }
+					renderer.render( scene, camera);
+					// if(stats){
+					// 	stats.end();
+					// }
+				}
+
+				//定义上次投射到的对象
+				function renderRaycasterObj(raycaster,scene,camera,mouse) {
+				    raycaster.setFromCamera(mouse, camera);
+				   	var currentSelectObject = transformControls.object;
+				    var intersects = raycaster.intersectObjects(scene.children, true);
+				    if (intersects.length > 0) {
+				    	var currentProjectiveObjT;
+				    	if(intersects[0].object.userData.selectUUID !== undefined) {
+				    		currentProjectiveObjT = scene.getObjectByProperty( "uuid", intersects[0].object.userData.selectUUID )
+				    	}
+				    	
+				        if (currentSelectObject != currentProjectiveObjT) {
+				            if((currentProjectiveObjT instanceof THREE.AxisHelper) || (currentProjectiveObjT instanceof THREE.GridHelper)){
+				                //穿过的是坐标轴线和网格线
+				                currentSelectObject = null;
+				                return;
+				            }
+				            currentSelectObject = currentProjectiveObjT;
+				        }
+				    } else {
+				        currentSelectObject = null;
+				    }
+				    setSelectObject(currentSelectObject);
+				}
+
+				function setSelectObject(obj) {
+					if(transformControls.object === obj) {
+						return;
+					}
+					// selectObject = obj;
+					if(obj) {
+						transformControls.attach(obj);
+				    	$('#obj_x').val((transformControls.objectSize.x).toFixed(0));
+				    	$('#obj_y').val((transformControls.objectSize.y).toFixed(0));
+				    	$('#obj_z').val((transformControls.objectSize.z).toFixed(0));
+				    } else {
+				    	transformControls.detach();
+				    }
+
+				    updateObjectInfo();
+				    requestAnimationFrame( render );
+				}
+
+				$('.category_item').on('touchstart', onPointerDown);
+				$('.category_item').on('mousedown', onPointerDown);
+				function onPointerDown( event ) {
+					event.preventDefault(); 
+
+					if ( _dragging === true || ( event.button !== undefined && event.button !== 0 ) ) return;
+
+					_dragging = true;
+
+					if(transformControls.addObject != undefined) {
+						scene.remove(transformControls.addObject);
+						removeObjectFromArray(sceneObjectIds, transformControls.addObject.uuid);
+						transformControls.addObject = undefined;
+						requestAnimationFrame( render );
+						_dragging = false;
+						return;
+					}
+
+					loadOBJ("models/washingmachine/washingmachine.mtl", 
+						"models/washingmachine/washingmachine.obj", null, function(object) {
+						_draggingObject = object;
+						// scene.add( _draggingObject );
+					});
+
+				}
+
+				$('category_item img').on('dragstart', function(event) { 
+					event.preventDefault(); 
+
+				});
+
+				$('#applyBtn').click(function () {
+					var selectObject = transformControls.object;
+					if(selectObject) {
+						selectObject.scale.x = $('#obj_x').val()/transformControls.objectSize.x;
+						selectObject.scale.y = $('#obj_z').val()/transformControls.objectSize.z;
+						selectObject.scale.z = $('#obj_y').val()/transformControls.objectSize.y;
+						requestAnimationFrame( render );
+						transformControls.updateBoxSize();
+					}
+				});
+
+				$('#saveScene').click(function () {
+					var output = {};// = scene.toJSON();
+
+					try {
+						output.scene = {"sceneId": 1, "sceneName":"abc", "scenePath":"scene.json"};
+
+						sceneObjects = [];
+
+						var obj;
+						var objDic;
+						var uuid;
+						for ( var i = 0, l = sceneObjectIds.length; i < l; i ++ ) {
+							uuid = sceneObjectIds[i];
+							if(uuid != undefined) {
+								obj = scene.getObjectByProperty("uuid", sceneObjectIds[i]);
+								if(obj != undefined) {
+									objDic = {};
+									objDic.t = {};
+									objDic.t.p = obj.position;
+									objDic.t.r = obj.rotation;
+									objDic.t.s = obj.scale;
+
+									if (obj.loader != undefined) {
+										objDic.loader = obj.loader;
+										objDic.path1 = obj.path1;
+										objDic.path2 = obj.path2;
+									}
+
+									if(obj.searchParam != undefined) {
+										objDic.searchParam = obj.searchParam;
+									}
+									sceneObjects.push(objDic);
+								}
+							}
+						}
+						output.scene.objects = sceneObjects;
+
+
+						output = JSON.stringify( output );
+						output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+					} catch ( e ) {
+						output = JSON.stringify( output );
+					}
+
+					saveString( output, 'scene.json' );
+				});
+
+				$('#importScene').click(function() {
+					fileInput.click();
+
+				});
+
+				$('#cleanScene').click(function() {
+					cleanScene();
+					requestAnimationFrame( render );
+				});
+
+				function cleanScene() {
+					// while(scene.children.length > 0){ 
+					//     scene.remove(scene.children[0]); 
+					// }
+
+					for ( var i = 0, l = sceneObjectIds.length; i < l; i ++ ) {
+						uuid = sceneObjectIds[i];
+						if(uuid != undefined) {
+							obj = scene.getObjectByProperty("uuid", sceneObjectIds[i]);
+							if(obj != undefined) {
+								scene.remove(obj);
+							}
+						}
+					}
+				}
+
+				function parseScene(data) {
+					console.log(data);
+					if(data && data.scene != undefined && data.scene.scenePath != undefined) {
+						cleanScene();
+
+						sceneObjectIds = [];
+
+						//reset camera posision
+						camera.position.set( 0, -8500, 4000 );
+						camera.up.set(0, 0, 1);
+						camera.lookAt(new THREE.Vector3(0,0,0));
+
+						var obj;
+						for (var i = 0; i < data.scene.objects.length; i++) {
+							obj = data.scene.objects[i];
+
+							if(obj.loader == "OBJLoader") {
+								loadOBJ(obj.path2, 
+									obj.path1, obj.t);
+							}
+						}
+						updateWall();
+						requestAnimationFrame( render );
+
+					}
+				}
+
+				$('#objDelete').click(function () {
+					var selectObject = transformControls.object;
+					if ( selectObject === null ) {
+						return;
+					}
+
+					selectObject.parent.remove(selectObject);
+					removeObjectFromArray(sceneObjectIds, selectObject.uuid);
+
+					setSelectObject(null);
+				});
+
+				function saveString( text, filename ) {
+
+					save( new Blob( [ text ], { type: 'text/plain' } ), filename );
+
+				}
+
+				var link = document.createElement( 'a' );
+				link.style.display = 'none';
+				document.body.appendChild( link ); // Firefox workaround, see #6594
+
+				function save( blob, filename ) {
+
+					link.href = URL.createObjectURL( blob );
+					link.download = filename || 'data.json';
+					link.click();
+					// URL.revokeObjectURL( url ); breaks Firefox...
+				}
+
+				function toScreenPosition(object, camera) {
+				    var vector = new THREE.Vector3();
+				    var pos = new THREE.Vector3();
+					var canvas = renderer.domElement;
+
+					var box = new THREE.Box3();
+					box.setFromObject(object);
+
+					pos.copy(box.max);
+				    projScreenMat = new THREE.Matrix4();
+				    projScreenMat.multiply( camera.projectionMatrix, camera.matrixWorldInverse );
+				    projScreenMat.multiplyVector3( pos );
+
+				    return { x: ( pos.x + 1 ) * $(canvas).width() / 2 + $(canvas).offset().left,
+				         y: ( - pos.y + 1) * $(canvas).height() / 2 + $(canvas).offset().top };
+				};
+
+				function updateObjectInfo() {
+					if(transformControls.object) {
+						var point = toScreenPosition(transformControls.object, camera);
+				    	$('.object-menu-warp').css("transform", "translate(" + point.x + "px, " + point.y + "px) translate(0px, -100%)");
+						$('.object-menu-warp').show();
+						$('#panel').show();
+					} else {
+						$('.object-menu-warp').hide();
+						$('#panel').hide();
+					}
+				}
+
+				function initTransformControls (camera, renderer, scene){
+					transformControls = new THREE.NiceControls(camera, renderer.domElement, scene);
+					transformControls.setMoveRange(-4100, 3900, -1450, 2500, 0, 2800);
+
+					transformControls.addEventListener('dragStart', function (event) {
+						if(orbitControls != undefined) {
+							orbitControls.enabled = false;
+						}
+						_enableRaycaster = false;
+				    });
+
+					transformControls.addEventListener('dragEnd', function (event) {
+				        if(orbitControls != undefined) {
+							orbitControls.enabled = true;
+						}
+						// _enableRaycaster = true;
+						updateObjectInfo();
+				    });
+
+				    transformControls.addEventListener('mouseDownOnControl', function (event) {
+				    	_enableRaycaster = false;
+						$('.object-menu-warp').hide();
+				    });
+
+				    // transformControls.addEventListener('mouseUp', function (event) {
+				    // 	_enableRaycaster = true;
+				    // });
+
+				    transformControls.addEventListener('change', function (event) {
+						requestAnimationFrame( render );
+				    });
+					scene.add(transformControls);
+				}
+
+				renderer.domElement.addEventListener( 'click', function(){
+					if(!_enableRaycaster) {
+						_enableRaycaster = true;
+						return;
+					}
+	                renderRaycasterObj(raycaster,scene,camera,mouse);
+	            }, false );
+
+	            function removeObjectFromArray(array, object) {
+	            	var index = array.indexOf(object);
+					if(index !== -1) {
+						array.remove(index);
+					}
+	            }
+
+	            document.onselectstart = function() {
+				  return false;
+				}; 
+			});
+			
+			// Array Remove - By John Resig (MIT Licensed)
+			Array.prototype.remove = function(from, to) {
+			  var rest = this.slice((to || from) + 1 || this.length);
+			  this.length = from < 0 ? this.length + from : from;
+			  return this.push.apply(this, rest);
+			};
+		</script>
+
+	</body>
+</html>
