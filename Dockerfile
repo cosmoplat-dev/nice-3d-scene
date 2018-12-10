@@ -1,4 +1,8 @@
 FROM registry.cosmoplat.com/cosmoplat/nginx
-MAINTAINER ouyang
-ADD index.html /usr/share/nginx/html/index.html
-ADD cosmoplat /usr/share/nginx/html/cosmoplat
+
+MAINTAINER liuan@haier.com
+
+RUN rm -rf /usr/share/nginx/html/*
+
+ADD . /usr/share/nginx/html/
+
